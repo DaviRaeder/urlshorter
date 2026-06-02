@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MailService } from 'src/mail/mail.service';
 import type { LoginDto } from './dto/login.dto';
+import type { UpdateAccountDto } from './dto/update.dto';
 
 @Injectable()
 export class AuthService {
@@ -56,6 +57,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
       },
+      message: "Email enviado com instruções para verificação"
     };
   }
 
@@ -188,6 +190,10 @@ export class AuthService {
       throw new NotFoundException('Usuário não encontrado');
     }
 
+    if (user.emailVerified !== true) {
+      throw new NotFoundException('Email não verificado');
+    }
+
     const passwordMatch = await bcrypt.compare(dto.password, user.password);
 
     if (!passwordMatch) {
@@ -207,15 +213,16 @@ export class AuthService {
     };
   }
 
-  async forgotPassword(dto: { email: string }) {
+  async forgotPassword(token: string) {
+    const payload = await this.jwtService.verifyAsync(token);
     const user = await this.prisma.user.findUnique({
       where: {
-        email: dto.email,
+        id: payload.sub,
       },
     });
 
-    if (!user) {
-      throw new NotFoundException('Usuário não encontrado');
+    if (!user || user.emailVerified !== true) {
+      throw new NotFoundException('Usuário não encontrado ou email não verificado');
     }
 
     const verificationToken = crypto.randomUUID();
@@ -269,5 +276,91 @@ export class AuthService {
         token: dto.token,
       },
     });
+  }
+
+  async getUser(accessToken: string) {
+    const payload = await this.jwtService.verifyAsync(accessToken);
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: payload.sub,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      emailVerified: user.emailVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
+  async deleteAccount(accessToken: string) {
+    const payload = await this.jwtService.verifyAsync(accessToken);
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: payload.sub,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    await this.prisma.user.delete({
+      where: {
+        id: user.id,
+      },
+    });
+  }
+
+  async updateAccount(accessToken: string, dto: UpdateAccountDto) {
+    const payload = await this.jwtService.verifyAsync(accessToken);
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: payload.sub,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    if (user.emailVerified !== true) {
+      throw new NotFoundException('Email não verificado');
+    }
+
+    if (dto.actualPassword) {
+      const passwordMatch = await bcrypt.compare(dto.actualPassword, user.password);
+
+      if (!passwordMatch) {
+        throw new NotFoundException('Senha incorreta');
+      }
+    }
+
+    if (dto.newPassword) {
+      const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+
+      await this.prisma.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          password: hashedPassword,
+        },
+      });
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      emailVerified: user.emailVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 }

@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Put, Query, Req, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
-import type { Response } from 'express';
+import type { Response, Request } from 'express';
 import type { LoginDto } from './dto/login.dto';
+import type { UpdateAccountDto } from './dto/update.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -53,8 +54,9 @@ export class AuthController {
   @Post("refresh")
   async refresh(
     @Res({ passthrough: true }) res: Response,  
+    @Req() req: Request,
   ) {
-    const user = await this.authService.refresh(res.cookie['refresh_token']);
+    const user = await this.authService.refresh(req.cookies['refresh_token']);
 
     res.cookie(
       'access_token',
@@ -125,10 +127,9 @@ export class AuthController {
 
   @Post("forgot-password")
   async forgotPassword(
-    @Body() dto: { email: string },
-    @Res({ passthrough: true }) res: Response,  
+    @Req() req: Request
   ) {
-    await this.authService.forgotPassword(dto);
+    await this.authService.forgotPassword(req.cookies['access_token']);
 
     return "Email enviado com instruções para resetar a senha";
   }
@@ -136,10 +137,39 @@ export class AuthController {
   @Post("reset-password")
   async resetPassword(
     @Body() dto: { token: string, password: string },
-    @Res({ passthrough: true }) res: Response,  
   ) {
     await this.authService.resetPassword(dto);
 
     return "Senha redefinida com sucesso";
+  }
+
+  @Get("me")
+  async me(@Req() req: Request) {
+    const user = await this.authService.getUser(req.cookies['access_token']);
+
+    return user;
+  }
+
+  @Delete("delete-account")
+  async deleteAccount(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.deleteAccount(req.cookies['access_token']);
+    
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
+  
+    return {};
+  }
+
+  @Put('account')
+  async updateAccount(
+    @Body() body: UpdateAccountDto,
+    @Req() req: Request,
+  ) {
+    const user = await this.authService.updateAccount(req.cookies['access_token'], body);
+    
+    return user;
   }
 }

@@ -29,7 +29,7 @@ model EmailVerification {
   id String @id @default(uuid())
 
   userId String @unique
-  user User @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   token String @unique
 
@@ -42,7 +42,7 @@ model PasswordReset {
   id String @id @default(uuid())
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   token String @unique
 
@@ -55,7 +55,7 @@ model Link {
   id String @id @default(uuid())
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   originalUrl String
   shortCode   String @unique
@@ -78,7 +78,7 @@ model RefreshToken {
   id String @id @default(uuid())
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   token String @unique
 
@@ -91,7 +91,7 @@ model LinkClick {
   id String @id @default(uuid())
 
   linkId String
-  link   Link   @relation(fields: [linkId], references: [id])
+  link   Link   @relation(fields: [linkId], references: [id], onDelete: Cascade)
 
   country String?
   city    String?
