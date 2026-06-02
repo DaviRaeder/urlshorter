@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id       String @id @default(uuid())
+  email    String @unique
+  password String
+
+  emailVerified Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  links Link[]
+
+  refreshTokens RefreshToken[]
+
+  emailVerifications EmailVerification[]
+
+  passwordResets PasswordReset[]
+}
+
+model EmailVerification {
+  id String @id @default(uuid())
+
+  userId String @unique
+  user User @relation(fields: [userId], references: [id])
+
+  token String @unique
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+}
+
+model PasswordReset {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  token String @unique
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+}
+
+model Link {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  originalUrl String
+  shortCode   String @unique
+
+  clickCount Int @default(0)
+
+  expiresAt DateTime?
+
+  password String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  linkClicks LinkClick[]
+}
+
+model RefreshToken {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  token String @unique
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+}
+
+model LinkClick {
+  id String @id @default(uuid())
+
+  linkId String
+  link   Link   @relation(fields: [linkId], references: [id])
+
+  country String?
+  city    String?
+
+  browser String?
+  os      String?
+  device  String?
+
+  referer String?
+
+  clickedAt DateTime @default(now())
+}
